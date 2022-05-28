@@ -165,4 +165,3 @@ class SignatureExtended:
         self, args, kwargs, ignore_params_from_signature: Optional[List[str]] = None
     ) -> SoftBoundParameters:
         return soft_bind(self.signature, args, kwargs, ignore_params_from_signature=ignore_params_from_signature)
-
