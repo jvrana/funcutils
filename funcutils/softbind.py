@@ -114,6 +114,29 @@ class SoftBoundParameters(NamedTuple):
             params = [v for v in self.params if bound == v.is_bound]
         return params
 
+    def get_param(self, key: Union[str, int]):
+        for i, p in enumerate(self.params):
+            if isinstance(key, int):
+                if i == key:
+                    if p.parameter.kind == Parameter.KEYWORD_ONLY:
+                        raise ValueError(
+                            f"There is no positional parameter {i}. "
+                            f"There is a Keyword-only parameter {p}. "
+                            f"Set `strict=False`, to return this parameter."
+                        )
+                    return p
+            else:
+                if p.parameter.name == key:
+                    if p.parameter.kind == Parameter.POSITIONAL_ONLY:
+                        raise ValueError(
+                            f"There is no keyword parameter {key}. "
+                            f"There is a Positional-only parameter {p}. "
+                            f"Set `strict=False`, to return this parameter."
+                        )
+                    return p
+        raise KeyError(f"Could not find parameter '{key}'")
+
+
     def get_values(self, bound=None) -> List[SoftBoundParamValue]:
         values = self.values
         if bound is not None:

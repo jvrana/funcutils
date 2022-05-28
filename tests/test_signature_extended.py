@@ -21,6 +21,18 @@ class TestSignatureExtended:
         s = SignatureExtended(foo)
         return s
 
+    def test_str(self):
+        def bar(a: int, b: str, c: float = 4.0) -> float:
+            ...
+        s = SignatureExtended(bar)
+        assert s.__str__() == "<SignatureExtended(a: int, b: str, c: float = 4.0) -> float>"
+
+    def test_repr(self):
+        def bar(a: int, b: str, c: float = 4.0) -> float:
+            ...
+        s = SignatureExtended(bar)
+        assert s.__repr__() == "<SignatureExtended(a: int, b: str, c: float = 4.0) -> float>"
+
     def test_get_param(self, s):
         assert s.get_param("b").name == "b"
 
@@ -92,3 +104,53 @@ class TestSignatureExtended:
         print(ret.get_args(bound=True))
         print(ret.get_kwargs(bound=False))
         print(ret.get_kwargs(bound=True))
+
+
+    def test_permute_by_name(self):
+        def foo(a: int, b: int, c: int):
+            ...
+        s = SignatureExtended(foo)
+        s.permute('b', 'a', 'c')
+        params = list(inspect.signature(foo).parameters.values())
+        expected = [params[1], params[0], params[2]]
+        assert s.params == tuple(expected)
+
+    def test_permute_by_pos(self):
+        def foo(a: int, b: int, c: int):
+            ...
+        s = SignatureExtended(foo)
+        s.permute(1, 0, 2)
+        params = list(inspect.signature(foo).parameters.values())
+        expected = [params[1], params[0], params[2]]
+        assert s.params == tuple(expected)
+
+    def test_permute_by_pos_error(self):
+        def foo(a: int, b: int, c: int):
+            ...
+        s = SignatureExtended(foo)
+        with pytest.raises(SignatureException):
+            s.permute(0, 'a', 2)
+
+    def test_permute_by_name_kwarg(self):
+        def foo(a: int, b: int, c: int = 0):
+            ...
+        s = SignatureExtended(foo)
+        s.permute('a', 'c', 1)
+        params = list(inspect.signature(foo).parameters.values())
+        expected = [params[0], params[2], params[1]]
+        assert s.params == tuple(expected)
+
+class TestNewCallSignature:
+
+    def test_new_call_signature(self):
+
+        def cat(a: str, b: str):
+            return a + b
+
+        assert cat('hello', 'world') == 'helloworld'
+
+        s = SignatureExtended(cat)
+        s.permute(1, 0)
+        f = s.wrap(cat)
+
+        assert f('hello', 'world') == 'worldhello'

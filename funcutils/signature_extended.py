@@ -2,6 +2,7 @@
 #  You may use, distribute, and modify this code under the terms of the MIT license.
 #  Copyright (c) 2022 Justin Vrana. All Rights Reserved.
 #  You may use, distribute, and modify this code under the terms of the MIT license.
+from __future__ import annotations
 import functools
 import inspect
 from inspect import BoundArguments
@@ -59,6 +60,8 @@ def get_signature(
     return signature
 
 
+
+
 def signature_to_param_list(s: Signature):
     return list(dict(s.parameters).values())
 
@@ -95,6 +98,14 @@ def copy_signature(
     return wrapped
 
 
+def validate_signature(f):
+    @functools.wraps(f)
+    def wrapped(self: SignatureExtended, *args, **kwargs):
+        self.signature
+        return f(self, *args, **kwargs)
+    return wrapped
+
+
 class SignatureExtended:
     def __init__(
         self,
@@ -114,7 +125,7 @@ class SignatureExtended:
         kwargs = {}
         if self.return_annotation is not Null:
             kwargs["return_annotation"] = self.return_annotation
-        self._signature = Signature(self.params, **kwargs)
+        self._signature = Signature(self.params, **kwargs, __validate_parameters__=True)
         return self._signature
 
     def get_param(self, key: Union[int, str], strict=True):
@@ -145,13 +156,15 @@ class SignatureExtended:
     def __delitem__(self, key: Union[int, str]):
         return self._params.remove(self.get_param(key))
 
-    def insert(self, index: int, param: Parameter):
+    def insert(self, index: int, param: Parameter) -> SignatureExtended:
         assert isinstance(param, Parameter)
         self._params.insert(index, param)
+        return self
 
-    def append(self, param: Parameter):
+    def append(self, param: Parameter) -> SignatureExtended:
         assert isinstance(param, Parameter)
         self._params.append(param)
+        return self
 
     def __len__(self):
         return len(self.params)
@@ -168,3 +181,32 @@ class SignatureExtended:
             kwargs,
             ignore_params_from_signature=ignore_params_from_signature,
         )
+
+    @validate_signature
+    def permute(self, *param_names: Union[int, str]) -> SignatureExtended:
+        assert len(param_names) == len(self.params)
+        params = []
+        for name in param_names:
+            p = self[name]
+            if p in params:
+                raise SignatureException(f"Parameter '{p}' designated twice.")
+            params.append(self[name])
+        self._params = params
+
+    def wrap(self, f: Callable) -> Callable:
+        s = self.__class__(f)
+        def wrapped(*args, **kwargs):
+            bound = self.soft_bind(args, kwargs)
+            return f(*bound.get_args(), **bound.get_kwargs())
+        return wrapped
+
+    def __str__(self):
+        inner_str = ', '.join([str(p) for p in self.params])
+        str_repr = f"<{self.__class__.__name__}({inner_str})"
+        if self.return_annotation:
+            str_repr += f' -> {self.return_annotation.__name__}'
+        str_repr += '>'
+        return str_repr
+
+    def __repr__(self):
+        return self.__str__()
