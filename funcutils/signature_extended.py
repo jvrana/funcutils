@@ -1,7 +1,5 @@
 #  Copyright (c) 2022 Justin Vrana. All Rights Reserved.
 #  You may use, distribute, and modify this code under the terms of the MIT license.
-
-
 #  Copyright (c) 2022 Justin Vrana. All Rights Reserved.
 #  You may use, distribute, and modify this code under the terms of the MIT license.
 import functools
@@ -164,4 +162,9 @@ class SignatureExtended:
     def soft_bind(
         self, args, kwargs, ignore_params_from_signature: Optional[List[str]] = None
     ) -> SoftBoundParameters:
-        return soft_bind(self.signature, args, kwargs, ignore_params_from_signature=ignore_params_from_signature)
+        return soft_bind(
+            self.signature,
+            args,
+            kwargs,
+            ignore_params_from_signature=ignore_params_from_signature,
+        )
