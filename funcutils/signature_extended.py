@@ -60,8 +60,6 @@ def get_signature(
     return signature
 
 
-
-
 def signature_to_param_list(s: Signature):
     return list(dict(s.parameters).values())
 
@@ -128,7 +126,10 @@ class SignatureExtended:
         self._signature = Signature(self.params, **kwargs, __validate_parameters__=True)
         return self._signature
 
-    def get_param(self, key: Union[int, str], strict=True):
+    def get_param(self, key: Union[int, str], strict=True) -> Parameter:
+        return self.get_pos_and_param(key, strict=strict)[1]
+
+    def get_pos_and_param(self, key: Union[int, str], strict=True) -> Tuple[int, Parameter]:
         for i, p in enumerate(self.params):
             if isinstance(key, int):
                 if i == key:
@@ -138,7 +139,7 @@ class SignatureExtended:
                             f"There is a Keyword-only parameter {p}. "
                             f"Set `strict=False`, to return this parameter."
                         )
-                    return p
+                    return i, p
             else:
                 if p.name == key:
                     if p.kind == Parameter.POSITIONAL_ONLY and strict:
@@ -147,7 +148,7 @@ class SignatureExtended:
                             f"There is a Positional-only parameter {p}. "
                             f"Set `strict=False`, to return this parameter."
                         )
-                    return p
+                    return i, p
         raise SignatureException(f"Could not find parameter '{key}'")
 
     def __getitem__(self, key) -> Parameter:
@@ -169,19 +170,19 @@ class SignatureExtended:
     def __len__(self):
         return len(self.params)
 
-    def bind(self, args, kwargs) -> inspect.BoundArguments:
+    def bind(self, *args, **kwargs) -> inspect.BoundArguments:
+        if kwargs is None:
+            kwargs = dict()
         return self.signature.bind(*args, **kwargs)
 
-    def soft_bind(
-        self, args, kwargs, ignore_params_from_signature: Optional[List[str]] = None
-    ) -> SoftBoundParameters:
+    def soft_bind(self, *args, **kwargs) -> SoftBoundParameters:
         return soft_bind(
             self.signature,
             args,
-            kwargs,
-            ignore_params_from_signature=ignore_params_from_signature,
+            kwargs
         )
 
+    # TODO: deprecated?
     @validate_signature
     def permute(self, *param_names: Union[int, str]) -> SignatureExtended:
         assert len(param_names) == len(self.params)
@@ -192,13 +193,6 @@ class SignatureExtended:
                 raise SignatureException(f"Parameter '{p}' designated twice.")
             params.append(self[name])
         self._params = params
-
-    def wrap(self, f: Callable) -> Callable:
-        s = self.__class__(f)
-        def wrapped(*args, **kwargs):
-            bound = self.soft_bind(args, kwargs)
-            return f(*bound.get_args(), **bound.get_kwargs())
-        return wrapped
 
     def __str__(self):
         inner_str = ', '.join([str(p) for p in self.params])

@@ -139,18 +139,3 @@ class TestSignatureExtended:
         params = list(inspect.signature(foo).parameters.values())
         expected = [params[0], params[2], params[1]]
         assert s.params == tuple(expected)
-
-class TestNewCallSignature:
-
-    def test_new_call_signature(self):
-
-        def cat(a: str, b: str):
-            return a + b
-
-        assert cat('hello', 'world') == 'helloworld'
-
-        s = SignatureExtended(cat)
-        s.permute(1, 0)
-        f = s.wrap(cat)
-
-        assert f('hello', 'world') == 'worldhello'

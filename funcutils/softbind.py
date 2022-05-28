@@ -136,7 +136,6 @@ class SoftBoundParameters(NamedTuple):
                     return p
         raise KeyError(f"Could not find parameter '{key}'")
 
-
     def get_values(self, bound=None) -> List[SoftBoundParamValue]:
         values = self.values
         if bound is not None:
