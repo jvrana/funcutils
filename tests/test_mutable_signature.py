@@ -212,7 +212,9 @@ class TestBoundSignature:
         with pytest.raises(SignatureException):
             b2.bind(1, 2, c=3)
 
-    def test_map_to(self):
+
+class TestTransform:
+    def test_permute_and_transform(self):
         def fn1(a: int, b: int, c: int):
             return (a, b, c)
 
@@ -220,8 +222,28 @@ class TestBoundSignature:
         s1.permute(2, 1, 0)
 
         fn2 = s1.transform(fn1)
-        print(fn2)
-        print(inspect.signature(fn2))
-        print(fn2.__doc__)
+
         assert fn1(1, 2, 3) == (1, 2, 3)
         assert fn2(1, 2, 3) == (3, 2, 1)
+
+    def test_permute_and_transform_signature(self):
+        def fn1(a: int, b: int, c: int):
+            return (a, b, c)
+
+        s1 = MutableSignature(fn1)
+        s1.permute(2, 1, 0)
+
+        fn2 = s1.transform(fn1)
+
+        assert fn1(1, 2, 3) == (1, 2, 3)
+        assert fn2(1, 2, 3) == (3, 2, 1)
+
+        print(fn2)
+        assert fn2.__name__ == "fn1"
+        print(inspect.signature(fn2))
+        print(fn2.__doc__)
+        assert str(inspect.signature(fn2)) == "(c: int, b: int, a: int)"
+        assert (
+            fn2.__doc__
+            == "Transformed function\nfn1(c: int, b: int, a: int) ==> fn1(a: int, b: int, c: int)"
+        )

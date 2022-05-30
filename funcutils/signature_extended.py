@@ -300,12 +300,14 @@ class MutableSignature:
     def bind(self, *args, **kwargs) -> BoundSignature:
         return BoundSignature(self, *args, **kwargs)
 
-    def transform(self, f: Callable):
+    def transform(self, f: Callable, name: Optional[str] = None):
         s1 = self.__class__(f)
         b1 = s1.bind()
 
+        name = name or f.__name__
         transform_doc = (
-            f"Transformed function\n{self.to_signature()} ==> {s1.to_signature()}"
+            f"Transformed function\n{name}{self.to_signature()} "
+            f"==> {f.__name__}{s1.to_signature()}"
         )
         if f.__doc__:
             fdoc = "\n".join(transform_doc, f.__doc__)
@@ -322,6 +324,7 @@ class MutableSignature:
             return f(*b1.args, **b1.kwargs)
 
         wrapped.__doc__ = fdoc
+        wrapped.__name__ = name
         return wrapped
 
 
