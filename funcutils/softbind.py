@@ -1,25 +1,41 @@
 #  Copyright (c) 2022 Justin Vrana. All Rights Reserved.
 #  You may use, distribute, and modify this code under the terms of the MIT license.
+from __future__ import annotations
+
 import inspect
 from inspect import Parameter
 from inspect import Signature
 from typing import Any
 from typing import Callable
 from typing import Dict
+from typing import Generic
 from typing import List
 from typing import NamedTuple
 from typing import Optional
 from typing import Tuple
+from typing import TypeVar
 from typing import Union
 
+T = TypeVar("T")
 
-class SoftBoundParamValue:
-    def __init__(self, key, value):
-        self.key: Union[int, str] = key
-        self.value: Any = value
-        self.param: SoftBoundParam = None
+# TODO: disallow changing entries
+# TODO: add __slots__
+# TODO: handle var positional and var keyword
 
-    def bind(self, parameter):
+
+class ArgValue(Generic[T]):
+    def __init__(self, key: Union[int, str], value: T):
+        """Represents an argument value passed to a function. Can be bound or
+        unbound to a SoftBoundParam.
+
+        :param key:
+        :param value:
+        """
+        self.key = key
+        self.value = value
+        self.param: Union[None, SoftBoundParam] = None
+
+    def bind(self, parameter: SoftBoundParam):
         if self.param:
             if self.param is not parameter:
                 raise ValueError(
@@ -29,11 +45,11 @@ class SoftBoundParamValue:
 
     @classmethod
     def _from_args(cls, args):
-        return [SoftBoundParamValue(i, v) for i, v in enumerate(args)]
+        return [cls(i, v) for i, v in enumerate(args)]
 
     @classmethod
     def _from_kwargs(cls, kwargs):
-        return [SoftBoundParamValue(k, v) for k, v in kwargs.items()]
+        return [cls(k, v) for k, v in kwargs.items()]
 
     @classmethod
     def from_args_kwargs(cls, args, kwargs=None):
@@ -53,11 +69,11 @@ class SoftBoundParamValue:
         return self.param is not None
 
 
-class SoftBoundParam:
+class SoftBoundParam(Generic[T]):
     def __init__(self, param: Parameter, pos: int):
         self.parameter: Parameter = param
         self.pos: int = pos
-        self.value: SoftBoundParamValue = None
+        self.value: Union[ArgValue[T], None] = None
 
     @classmethod
     def from_signature_or_parameters(
@@ -69,7 +85,7 @@ class SoftBoundParam:
             parameters = signature_or_parameters
         return [SoftBoundParam(v, i) for i, v in enumerate(parameters)]
 
-    def bind(self, inst: SoftBoundParamValue):
+    def bind(self, inst: ArgValue):
         if self.value is not None and self.value is not inst:
             raise ValueError(
                 f"Cannot rebind param value to a different value.\n{self.value} != {inst}"
@@ -103,15 +119,41 @@ class SoftBoundParam:
     def is_bound(self):
         return self.value is not None
 
+    @property
+    def is_positional(self):
+        return self.parameter.kind in [
+            Parameter.POSITIONAL_OR_KEYWORD,
+            Parameter.POSITIONAL_ONLY,
+        ]
+
+    @property
+    def is_positional_only(self):
+        return self.parameter.kind == Parameter.POSITIONAL_ONLY
+
+    @property
+    def is_keyword(self):
+        return self.parameter.kind in [
+            Parameter.POSITIONAL_OR_KEYWORD,
+            Parameter.KEYWORD_ONLY,
+        ]
+
+    @property
+    def is_keyword_only(self):
+        return self.parameter.kind == Parameter.KEYWORD_ONLY
+
 
 class SoftBoundParameters(NamedTuple):
     params: List[SoftBoundParam]
-    values: List[SoftBoundParamValue]
+    values: List[ArgValue]
 
-    def get_params(self, bound=None) -> List[SoftBoundParam]:
+    def get_params(
+        self, bound=None, fn: Optional[Callable[[SoftBoundParam], bool]] = None
+    ) -> List[SoftBoundParam]:
         params = self.params
         if bound is not None:
             params = [v for v in self.params if bound == v.is_bound]
+        if fn:
+            params = [p for p in params if fn(p)]
         return params
 
     def get_param(self, key: Union[str, int]):
@@ -136,18 +178,18 @@ class SoftBoundParameters(NamedTuple):
                     return p
         raise KeyError(f"Could not find parameter '{key}'")
 
-    def get_values(self, bound=None) -> List[SoftBoundParamValue]:
+    def get_values(self, bound=None) -> List[ArgValue]:
         values = self.values
         if bound is not None:
             values = [v for v in self.values if bound == v.is_bound]
         return values
 
     @property
-    def unbound_values(self) -> List[SoftBoundParamValue]:
+    def unbound_values(self) -> List[ArgValue]:
         return self.get_values(bound=False)
 
     @property
-    def bound_values(self) -> List[SoftBoundParamValue]:
+    def bound_values(self) -> List[ArgValue]:
         return self.get_values(bound=True)
 
     @property
@@ -168,7 +210,7 @@ class SoftBoundParameters(NamedTuple):
         return self._signature(self.bound_params)
 
     def get_args(
-        self, bound: bool = None, fn: Callable[[SoftBoundParamValue], bool] = None
+        self, bound: bool = None, fn: Callable[[ArgValue], bool] = None
     ) -> Tuple[Any, ...]:
         """Get positional arguments.
 
@@ -187,7 +229,7 @@ class SoftBoundParameters(NamedTuple):
         )
 
     def get_kwargs(
-        self, bound: bool = None, fn: Callable[[SoftBoundParamValue], bool] = None
+        self, bound: bool = None, fn: Callable[[ArgValue], bool] = None
     ) -> Dict[str, Any]:
         """Get key-word arguments.
 
@@ -281,7 +323,7 @@ class SoftBoundParameters(NamedTuple):
                     _new_params_list.append(p)
             signature = Signature(_new_params_list)
 
-        values = SoftBoundParamValue.from_args_kwargs(args, kwargs)
+        values = ArgValue.from_args_kwargs(args, kwargs)
         params = SoftBoundParam.from_signature_or_parameters(signature)
         for val in values:
             for param in params:
