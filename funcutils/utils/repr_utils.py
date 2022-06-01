@@ -1,14 +1,17 @@
+#  Copyright (c) 2022 Justin Vrana. All Rights Reserved.
+#  You may use, distribute, and modify this code under the terms of the MIT license.
 import inspect
+from typing import Any
 from typing import Callable
 from typing import List
 from typing import Optional
 from typing import Tuple
 from typing import Union
 
-from funcutils.null import Null
+from funcutils.utils import Null
 
 
-def resolve_attr(obj, name, default=Null):
+def resolve_attr(obj, name, default: Any = Null):
     if name is not None and hasattr(obj, name):
         value = getattr(obj, name)
     else:
@@ -21,7 +24,6 @@ def resolve_attr(obj, name, default=Null):
 
 
 class ReprMixin:
-
     __repr_name__: Optional[Union[str, Tuple[str, Callable]]] = Null
     __repr_attrs__: Optional[List[Union[str, Tuple[str, Callable]]]] = None
 

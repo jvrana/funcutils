@@ -19,30 +19,23 @@ def singleton(c: Union[Type, str]) -> Singleton:
         if getattr(cls, SINGLETON_INST) is None:
             new = c.__new__(cls)
             setattr(cls, SINGLETON_INST, new)
-            new.__init__(*args, **kwargs)
+            new.__init__()
         return getattr(cls, SINGLETON_INST)
 
     def __call__(self, *args, **kwargs):
         return self
 
-    # def __str__(self):
-    #     return self.__class__.__name__
-    #
-    # def __repr__(self):
-    #     return self.__class__.__name__
-
-    return type(
+    singleton_type = type(
         c.__name__,
         (c,),
         {
             "__new__": __new__,
             "__call__": __call__,
-            # '__str__': __str__,
-            # '__repr__': __repr__,
             SINGLETON_INST: None,
             SINGLETON: True,
         },
-    )()
+    )
+    return singleton_type()
 
 
 def is_singleton(x: Any):

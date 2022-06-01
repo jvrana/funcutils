@@ -1,13 +1,8 @@
-import inspect
 from typing import Any
 from typing import Literal
-from typing import Union
 
-import pytest
-
-from funcutils.null import Null
-from funcutils.singleton import is_singleton
-from funcutils.singleton import singleton
+from funcutils.utils.singleton import is_singleton
+from funcutils.utils.singleton import singleton
 
 
 def test_singleton_wrapper():

@@ -3,7 +3,7 @@
 from typing import Any
 from typing import Literal
 
-from funcutils.singleton import singleton
+from funcutils.utils.singleton import singleton
 
 
 @singleton
