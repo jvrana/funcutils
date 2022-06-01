@@ -386,7 +386,6 @@ class BoundSignature(MutableSignature):
                 visited.add(pv)
             else:
                 self.data.append(ParameterValue(key=i, value=arg))
-                visited.append(self.data[-1])
         for k, v in kwargs.items():
             if k in data_dict:
                 pv = data_dict[k]
@@ -440,13 +439,13 @@ class BoundSignature(MutableSignature):
         return self.get_kwargs()
 
     def get_bound(self) -> Tuple[ParameterValue, ...]:
-        return [d for d in self.data if d.is_bound()]
+        return tuple([d for d in self.data if d.is_bound()])
 
     def get_unbound_parameters(self) -> Tuple[ParameterValue, ...]:
-        return [d for d in self.data if not d.is_unbound_param()]
+        return tuple([d for d in self.data if not d.is_unbound_param()])
 
     def get_unbound_values(self) -> Tuple[ParameterValue, ...]:
-        return [d for d in self.data if not d.is_unbound_value()]
+        return tuple([d for d in self.data if not d.is_unbound_value()])
 
     def get_unbound_args(self) -> Tuple[Any, ...]:
         """Return the unbound args as a tuple of values.
