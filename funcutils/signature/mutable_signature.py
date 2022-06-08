@@ -5,6 +5,7 @@ from __future__ import annotations
 import functools
 import inspect
 import operator
+import textwrap
 from collections import OrderedDict
 from inspect import Parameter
 from inspect import Signature
@@ -31,9 +32,13 @@ from funcutils.signature.utils import get_signature
 from funcutils.utils import Null
 from funcutils.utils import null
 from funcutils.utils.repr_utils import ReprMixin
+from funcutils.utils.textutils import extract_indent
+from funcutils.utils.textutils import left_align
+
 
 T = TypeVar("T")
 SignatureLike = Union[Callable, Signature, List[Parameter]]
+empty = inspect._empty
 
 
 class SignatureException(Exception):
@@ -383,16 +388,45 @@ class MutableSignature(Sequence[MutableParameter]):
         self,
         from_params: Sequence[Union[int, str]],
         name: Optional[str] = None,
-        key: int = 0,
+        position: int = 0,
         kind=ParameterKind.POSITIONAL_OR_KEYWORD,
     ):
+        """Pack a set of parameters into a single parameter.
+
+        Examples:
+
+        .. testsetup:: *
+
+           import funcutils
+
+        .. testcode::
+            def fn1(a: int, b: float, c: str, d: list):
+                return a, b, c, d
+
+            s = MutableSignature(fn1)
+            s.pack(('a', 'c', 'd'), position=1)
+            str(s.to_signature())
+
+        .. testoutput::
+
+            (b: float, a__c__d: Tuple[int, str, list])
+
+        :param from_params: Parameters to pack
+        :param name: Optional name to give the new packed parameter.
+            If not provided, parameter names will be joined with '__' (e.g. a, b, c => 'a__b__c')
+        :param position: Position to insert the new packed parameter. Note that the position is
+            relative to the parameter kind. PositionalOnly, PositionalOrKeyword, PositionalVar,
+            KeywordOnly, KeywordVar
+        :param kind: Parameter kind to give the new packed parameter.
+        :return:
+        """
         params = [self[k] for k in from_params]
         packed = MutableParameterTuple(params, name=name, kind=kind)
 
         to_remove = [self[k] for k in from_params]
         for p in to_remove:
             self.remove(p)
-        self.insert(key, packed)
+        self.insert(position, packed)
 
     def bind(self, *args, **kwargs) -> BoundSignature:
         return BoundSignature(self, *args, **kwargs)
@@ -421,14 +455,14 @@ class MutableSignature(Sequence[MutableParameter]):
         b1 = s1.bind()
 
         name = name or f.__name__
-        transform_doc = (
-            f"Transformed function\n{name}{self.to_signature()} "
-            f"==> {f.__name__}{s1.to_signature()}"
-        )
-        if f.__doc__:
-            fdoc = "\n".join(transform_doc, f.__doc__)
-        else:
-            fdoc = transform_doc
+        fdoc = f.__doc__ or ""
+        indent = "    "
+        fdoc = (
+            "Transformed function\n\n"
+            + ".. code-block:: python\n\n"
+            + left_align(f"{f.__name__}{s1.to_signature()}\n", prefix=indent)
+            + left_align(fdoc, prefix=indent * 2)
+        ).strip("\n")
 
         @copy_signature(self.to_signature())
         @functools.wraps(f)
@@ -450,7 +484,6 @@ class MutableSignature(Sequence[MutableParameter]):
                     parameter_values.append(pv)
 
             for pv in parameter_values:
-                print(f"Setting {pv.parameter.name} to {pv.value}")
                 b1.get(pv.parameter.name).value = pv.value
             return f(*b1.args, **b1.kwargs)
 
@@ -463,9 +496,9 @@ class MutableParameterTuple(MutableParameter):
     def __init__(
         self,
         parameters: List[MutableParameter],
-        annotation: Any = inspect._empty,
+        annotation: Any = empty,
         name: Optional[str] = None,
-        default: Tuple = inspect._empty,
+        default: Tuple = empty,
         kind: ParameterKind = ParameterKind.POSITIONAL_OR_KEYWORD,
     ):
         # super().__init__(name, default, annotation, kind)
@@ -474,9 +507,11 @@ class MutableParameterTuple(MutableParameter):
         else:
             self.name = "__".join([p.name for p in parameters])
         self.parameters = parameters
-        annots = [p.annotation for p in parameters]
-        names = [p.name for p in parameters]
-        self.annotation = tuple_type_constructor(annots, names)
+        if annotation == empty:
+            annots = [p.annotation for p in parameters]
+            names = [p.name for p in parameters]
+            annotation = tuple_type_constructor(annots, names)
+        self.annotation = annotation
         self.kind = kind
         if default is Null:
             if not any([_is_empty(p.default) for p in parameters]):

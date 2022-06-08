@@ -269,7 +269,6 @@ class TestBoundSignature:
         b2 = s2.bind(1, 2, 3)
         print()
         for pv in b2.bound:
-            print(f"Setting {pv.parameter.name} to {pv.value}")
             b1.get(pv.parameter.name).value = pv.value
         assert b2.args == (1, 2, 3)
         assert b1.args == (3, 1, 2)
@@ -325,97 +324,145 @@ class TestTransform:
             == "Transformed function\nfn1(c: int, b: int, a: int) ==> fn1(a: int, b: int, c: int)"
         )
 
+    class TestPackingParameter:
+        """Tests related to packing multiple parameters into a single
+        parameter."""
 
-class TestPackingParameter:
-    def test_tuple_type_constructor(self):
-        def fn1(a: int, b, c: int):
-            return (a, b, c)
+        def test_tuple_type_constructor(self):
+            def fn1(a: int, b, c: int):
+                return (a, b, c)
 
-        s = MutableSignature(fn1)
+            s = MutableSignature(fn1)
 
-        annots = [p.annotation for p in s]
-        TupleType = tuple_type_constructor(annots)
-        assert str(TupleType) == "typing.Tuple[int, typing.Any, int]"
+            annots = [p.annotation for p in s]
+            TupleType = tuple_type_constructor(annots)
+            assert str(TupleType) == "typing.Tuple[int, typing.Any, int]"
 
-    def test_named_tuple_type_constructor(self):
-        def fn1(a: int, b, c: int):
-            return (a, b, c)
+        def test_named_tuple_type_constructor(self):
+            def fn1(a: int, b, c: int):
+                return (a, b, c)
 
-        s = MutableSignature(fn1)
+            s = MutableSignature(fn1)
 
-        annots = [p.annotation for p in s]
-        TupleType = named_tuple_type_constructor(annots, ["a", "b", "c"])
-        print(TupleType)
+            annots = [p.annotation for p in s]
+            TupleType = named_tuple_type_constructor(annots, ["a", "b", "c"])
+            print(TupleType)
 
-    def test_tuple_type_constructor2(self):
-        def fn1(a: int, b, c: int):
-            return (a, b, c)
+        def test_tuple_type_constructor2(self):
+            def fn1(a: int, b, c: int):
+                return (a, b, c)
 
-        s = MutableSignature(fn1)
+            s = MutableSignature(fn1)
 
-        class Foo(NamedTuple):
-            a: int
-            b: int
-            c: int
+            class Foo(NamedTuple):
+                a: int
+                b: int
+                c: int
 
-        annots = [p.annotation for p in s]
-        TupleType = tuple_type_constructor(annots, Foo)
-        assert str(TupleType) == "typing.Tuple[int, typing.Any, int]"
+            annots = [p.annotation for p in s]
+            TupleType = tuple_type_constructor(annots, Foo)
+            assert str(TupleType) == "typing.Tuple[int, typing.Any, int]"
 
-    def test_mutable_parameter_tuple(self):
-        def fn1(a: int, b, c: int):
-            return (a, b, c)
+        def test_mutable_parameter_tuple(self):
+            def fn1(a: int, b, c: int):
+                return (a, b, c)
 
-        s = MutableSignature(fn1)
-        MutableParameterTuple(list(s))
+            s = MutableSignature(fn1)
+            MutableParameterTuple(list(s))
 
-    # TODO: better tests here
-    def test_mutable_parameter_tuple_by_name(self):
-        def fn1(a: int, b, c: int):
-            return (a, b, c)
+        # TODO: better tests here
+        def test_mutable_parameter_tuple_by_name(self):
+            def fn1(a: int, b, c: int):
+                return (a, b, c)
 
-        s = MutableSignature(fn1)
-        s.pack(["a", "b"])
-        print(s)
-        print(s.to_signature())
-        assert str(s.to_signature()) == "(a__b: Tuple[int, Any], c: int)"
-        assert str(s) == "<MutableSignature(a__b: Tuple[int, Any], c: int) -> _empty>"
+            s = MutableSignature(fn1)
+            s.pack(["a", "b"])
+            print(s)
+            print(s.to_signature())
+            assert str(s.to_signature()) == "(a__b: Tuple[int, Any], c: int)"
+            assert (
+                str(s) == "<MutableSignature(a__b: Tuple[int, Any], c: int) -> _empty>"
+            )
 
-    def test_mutable_parameter_tuple_by_index(self):
-        def fn1(a: int, b, c: int):
-            return (a, b, c)
+        def test_mutable_parameter_tuple_by_index(self):
+            def fn1(a: int, b, c: int):
+                return (a, b, c)
 
-        s = MutableSignature(fn1)
-        s.pack([0, 1])
-        print(s)
-        print(s.to_signature())
-        assert str(s.to_signature()) == "(a__b: Tuple[int, Any], c: int)"
-        assert str(s) == "<MutableSignature(a__b: Tuple[int, Any], c: int) -> _empty>"
+            s = MutableSignature(fn1)
+            s.pack([0, 1])
+            print(s)
+            print(s.to_signature())
+            assert str(s.to_signature()) == "(a__b: Tuple[int, Any], c: int)"
+            assert (
+                str(s) == "<MutableSignature(a__b: Tuple[int, Any], c: int) -> _empty>"
+            )
 
-    def test_mutable_parameter_tuple_by_name_and_index(self):
-        def fn1(a: int, b, c: int):
-            return (a, b, c)
+        def test_mutable_parameter_tuple_by_name_and_index(self):
+            def fn1(a: int, b, c: int):
+                return (a, b, c)
 
-        s = MutableSignature(fn1)
-        s.pack([2, "a"])
-        print(s)
-        print(s.to_signature())
-        assert str(s.to_signature()) == "(c__a: Tuple[int, int], b)"
+            s = MutableSignature(fn1)
+            s.pack([2, "a"])
+            print(s)
+            print(s.to_signature())
+            assert str(s.to_signature()) == "(c__a: Tuple[int, int], b)"
 
-    def test_pack_and_bind(self):
-        def fn1(a: int, b, c: int):
-            return a, b, c
+        def test_pack_and_bind(self):
+            def fn1(a: int, b, c: int):
+                return a, b, c
 
-        s = MutableSignature(fn1)
-        s.pack((0, 1))
-        fn2 = s.transform(fn1)
-        assert fn2((1, 2), 3) == (1, 2, 3)
+            s = MutableSignature(fn1)
+            s.pack((0, 1))
+            fn2 = s.transform(fn1)
+            assert fn2((1, 2), 3) == (1, 2, 3)
 
-    def test_pack_and_bind_pos_1(self):
-        def fn1(a: int, b, c: int):
-            return a, b, c
+        def test_pack_and_bind_pos_1(self):
+            def fn1(a: int, b, c: int):
+                return a, b, c
 
-        s = MutableSignature(fn1)
-        s.pack((0, 1), key=1)
-        fn2 = s.transform(fn1)
-        assert fn2(3, (1, 2)) == (1, 2, 3)
+            s = MutableSignature(fn1)
+            s.pack((0, 1), position=1)
+            fn2 = s.transform(fn1)
+            assert fn2(3, (1, 2)) == (1, 2, 3)
+
+        def test_pack_and_bind_doctest(self):
+            def fn1(a: int, b: float, c: str, d: list) -> tuple:
+                """Just returns a new tuple.
+
+                :param a: Argument a
+                :param b: Argument b
+                :param c: Argument c
+                :param d: Argument d
+                :return: Returns a tuple of all the arguments
+                """
+                return a, b, c, d
+
+            s = MutableSignature(fn1)
+            s.pack(("a", "c", "d"), position=1)
+            assert (
+                str(s.to_signature())
+                == "(b: float, a__c__d: Tuple[int, str, list]) -> tuple"
+            )
+
+            fn2 = s.transform(fn1)
+
+            print(fn2.__doc__)
+
+            expected = """
+Transformed function
+
+.. code-block:: python
+
+    fn1(a: int, b: float, c: str, d: list) -> tuple
+
+        Just returns a new tuple
+
+        :param a: Argument a
+        :param b: Argument b
+        :param c: Argument c
+        :param d: Argument d
+        :return: Returns a tuple of all the arguments
+""".strip(
+                "\n"
+            )
+            assert fn2.__doc__ == expected

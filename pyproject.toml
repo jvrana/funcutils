@@ -6,10 +6,19 @@ authors = ["Justin Vrana <justin.vrana@justbiotherapeutics.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.8"
+Sphinx = {version = "^5.0.1", optional = true}
+sphinx-rtd-theme = {version = "^1.0.0", optional = true}
+sphinx-autodoc-typehints = {version = "^1.18.2", optional = true}
+PyYAML = {version = "^6.0", optional = true}
+
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.1.2"
 pre-commit = "^2.19.0"
+tox = "^3.25.0"
+
+[tool.poetry.extras]
+documentation = ["Sphinx", "sphinx-rtd-theme", "sphinx-autodoc-typehints", "sphinxcontrib-confluencebuilder", "PyYAML"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
