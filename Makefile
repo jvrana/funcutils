@@ -13,13 +13,15 @@ clean:
 	rm -rf pip-wheel-metadata
 	rm -rf docs/_build
 	rm -rf .pytest_cache
+	find . \( -name '__pycache__' -or -name '*.pyc' \) -delete
 
 
 build:
 	poetry build
 
 publish: build
-	python -m twine upload --repository gitlab dist/* --cert ${CERT}  --verbose
+	poetry publish
+	#python -m twine upload --repository gitlab dist/* --cert ${CERT}  --verbose
 
 
 docs:

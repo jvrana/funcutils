@@ -16,13 +16,13 @@ import sys
 
 # -- Install Package -----------------------------------------------------
 sys.path.insert(0, os.path.abspath(".."))
-import funcutils
+import jdv_funcutils
 from datetime import date
 
 # creating the date object of today's date
 todays_date = date.today()
 
-pkg = funcutils
+pkg = jdv_funcutils
 
 
 # -- Project information -----------------------------------------------------
