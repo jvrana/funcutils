@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "jdv_funcutils"
-version = "1.0.0"
+version = "1.0.1"
 description = "Function utilties."
 authors = ["Justin Vrana <justin.vrana@justbiotherapeutics.com>"]
 
