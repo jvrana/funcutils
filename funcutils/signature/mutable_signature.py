@@ -188,6 +188,26 @@ class MutableSignature(Sequence[MutableParameter]):
             return_annotation = s.return_annotation
         self.return_annotation = return_annotation
 
+    def partition(
+        self, fn: Callable[[MutableParameter], bool]
+    ) -> Tuple[MutableSignature, MutableSignature]:
+        """Partition the signature using a partition function.
+
+        :param fn: The partition function taking a MutableParameter and returning a boolean.
+        :return: Tuple of MutableSignature either passing the function (first in the tuple) or not passing the
+            function (second in the tuple)
+        """
+        s1 = MutableSignature()
+        s2 = MutableSignature()
+        for p in self.params:
+            if fn(p):
+                s1.add(p)
+            else:
+                s2.add(p)
+        s1.return_annotation = self.return_annotation
+        s2.return_annotation = self.return_annotation
+        return s1, s2
+
     @property
     def params(self) -> Tuple[MutableParameter, ...]:
         return tuple(functools.reduce(operator.add, self.param_by_kind.values()))
@@ -456,13 +476,12 @@ class MutableSignature(Sequence[MutableParameter]):
 
         name = name or f.__name__
         fdoc = f.__doc__ or ""
-        indent = "    "
         fdoc = (
-            "Transformed function\n\n"
-            + ".. code-block:: python\n\n"
-            + left_align(f"{f.__name__}{s1.to_signature()}\n", prefix=indent)
-            + left_align(fdoc, prefix=indent * 2)
-        ).strip("\n")
+            f"New Signature: {name}{self.to_signature()}\n"
+            + "\n"
+            + left_align(f"{name}{inspect.signature(f)}:\n")
+            + textwrap.indent(textwrap.dedent(fdoc), "    ").strip("\n")
+        )
 
         @copy_signature(self.to_signature())
         @functools.wraps(f)
@@ -568,6 +587,30 @@ class BoundSignature(Collection[ParameterValue]):
         self.signature = signature
         self.data: List[ParameterValue] = []
         self.bind(*args, **kwargs)
+
+    def partition(
+        self, fn: Callable[[ParameterValue], bool]
+    ) -> Tuple[BoundSignature, BoundSignature]:
+        """Partition the signature using a partition function.
+
+        :param fn: The partition function taking a ParameterValue and returning a boolean.
+        :return: Tuple of BoundSignatures either passing the function (first in the tuple) or not passing the
+            function (second in the tuple)
+        """
+        a, b = [], []
+        for pv in self.data:
+            if fn(pv):
+                a.append(pv)
+            else:
+                b.append(pv)
+        s1 = MutableSignature([p.parameter.to_parameter() for p in a])
+        b1 = BoundSignature(s1)
+        b1.data = a
+
+        s2 = MutableSignature([p.parameter.to_parameter() for p in b])
+        b2 = BoundSignature(s2)
+        b2.data = b
+        return b1, b2
 
     def bind(self, *args, **kwargs) -> BoundSignature:
         data_dict = {}
