@@ -1,6 +1,6 @@
-# Func Utils
+# jdv_funcutils
 
-
+[![Python package](https://github.com/jvrana/funcutils/actions/workflows/python-package.yml/badge.svg)](https://github.com/jvrana/funcutils/actions/workflows/python-package.yml)
 
 ## Features
 
