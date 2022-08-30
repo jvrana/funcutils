@@ -26,14 +26,14 @@ from typing import Type
 from typing import TypeVar
 from typing import Union
 
-from funcutils.signature.utils import copy_signature
-from funcutils.signature.utils import dict_remove_null
-from funcutils.signature.utils import get_signature
-from funcutils.utils import Null
-from funcutils.utils import null
-from funcutils.utils.repr_utils import ReprMixin
-from funcutils.utils.textutils import extract_indent
-from funcutils.utils.textutils import left_align
+from jdv_funcutils.signature.utils import copy_signature
+from jdv_funcutils.signature.utils import dict_remove_null
+from jdv_funcutils.signature.utils import get_signature
+from jdv_funcutils.utils import Null
+from jdv_funcutils.utils import null
+from jdv_funcutils.utils.repr_utils import ReprMixin
+from jdv_funcutils.utils.textutils import extract_indent
+from jdv_funcutils.utils.textutils import left_align
 
 
 T = TypeVar("T")

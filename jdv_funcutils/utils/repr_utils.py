@@ -8,7 +8,7 @@ from typing import Optional
 from typing import Tuple
 from typing import Union
 
-from funcutils.utils import Null
+from jdv_funcutils.utils import Null
 
 
 def resolve_attr(obj, name, default: Any = Null):

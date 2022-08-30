@@ -12,12 +12,12 @@ from typing import Optional
 from typing import Tuple
 from typing import Union
 
-from funcutils import MutableParameter
-from funcutils.signature.mutable_signature import ParameterKind
-from funcutils.signature.mutable_signature import ParameterLike
-from funcutils.signature.mutable_signature import SignatureMissingParameterException
-from funcutils.utils import Null
-from funcutils.utils import null
+from jdv_funcutils import MutableParameter
+from jdv_funcutils.signature.mutable_signature import ParameterKind
+from jdv_funcutils.signature.mutable_signature import ParameterLike
+from jdv_funcutils.signature.mutable_signature import SignatureMissingParameterException
+from jdv_funcutils.utils import Null
+from jdv_funcutils.utils import null
 
 
 def dict_rm_by_value(data: dict, fn: Callable) -> dict:

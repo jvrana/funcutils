@@ -1,6 +1,6 @@
 #  Copyright (c) 2022 Justin Vrana. All Rights Reserved.
 #  You may use, distribute, and modify this code under the terms of the MIT license.
-from funcutils.utils.decorators import naked_decorator
+from jdv_funcutils.utils.decorators import naked_decorator
 
 
 def test_naked_decorator():

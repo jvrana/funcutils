@@ -4,8 +4,8 @@ from .__version__ import __authors__
 from .__version__ import __license__
 from .__version__ import __title__
 from .__version__ import __version__
-from funcutils.signature.mutable_signature import MutableParameter
-from funcutils.signature.mutable_signature import MutableSignature
+from jdv_funcutils.signature.mutable_signature import MutableParameter
+from jdv_funcutils.signature.mutable_signature import MutableSignature
 
 
 __all__ = ["MutableParameter", "MutableSignature"] + [

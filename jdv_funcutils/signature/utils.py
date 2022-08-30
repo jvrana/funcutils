@@ -12,8 +12,8 @@ from typing import List
 from typing import Tuple
 from typing import Union
 
-from funcutils.signature.typedefs import SignatureLike
-from funcutils.utils import Null
+from jdv_funcutils.signature.typedefs import SignatureLike
+from jdv_funcutils.utils import Null
 
 
 def dict_rm_by_value(data: dict, fn: Callable) -> dict:

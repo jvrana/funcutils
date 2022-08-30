@@ -8,13 +8,13 @@ from typing import Tuple
 
 import pytest
 
-from funcutils import MutableSignature
-from funcutils.signature.mutable_signature import BoundSignature
-from funcutils.signature.mutable_signature import MutableParameterTuple
-from funcutils.signature.mutable_signature import named_tuple_type_constructor
-from funcutils.signature.mutable_signature import SignatureException
-from funcutils.signature.mutable_signature import SignatureMissingParameterException
-from funcutils.signature.mutable_signature import tuple_type_constructor
+from jdv_funcutils import MutableSignature
+from jdv_funcutils.signature.mutable_signature import BoundSignature
+from jdv_funcutils.signature.mutable_signature import MutableParameterTuple
+from jdv_funcutils.signature.mutable_signature import named_tuple_type_constructor
+from jdv_funcutils.signature.mutable_signature import SignatureException
+from jdv_funcutils.signature.mutable_signature import SignatureMissingParameterException
+from jdv_funcutils.signature.mutable_signature import tuple_type_constructor
 
 
 class TestSignatureExtended:

@@ -3,7 +3,7 @@
 from typing import Any
 from typing import Literal
 
-from funcutils.utils.singleton import singleton
+from jdv_funcutils.utils.singleton import singleton
 
 
 @singleton

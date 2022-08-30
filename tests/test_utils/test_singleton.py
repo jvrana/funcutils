@@ -1,8 +1,8 @@
 from typing import Any
 from typing import Literal
 
-from funcutils.utils.singleton import is_singleton
-from funcutils.utils.singleton import singleton
+from jdv_funcutils.utils.singleton import is_singleton
+from jdv_funcutils.utils.singleton import singleton
 
 
 def test_singleton_wrapper():
