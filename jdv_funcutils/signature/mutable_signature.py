@@ -577,6 +577,11 @@ class BoundParameterValue(Protocol):
     def is_unbound_param(self) -> Literal[False]:
         ...
 
+    def has_value(self) -> bool:
+        if self.value is Null:
+            return False
+        return True
+
 
 class BoundSignature(Collection[ParameterValue]):
     def __init__(
