@@ -57,4 +57,11 @@ Run `tox` to run tests.
 
 ### Github Actions
 
+### Making a Release
+
+1. Merge the branch
+2. Wait for tests to pass
+3. Tag the branch. Run `poetry version <VERSION>` to update the version.
+4. Allow Github Actions to make a Release
+
 

@@ -14,7 +14,7 @@ clean:
 	rm -rf docs/_build
 	rm -rf .pytest_cache
 	find . \( -name '__pycache__' -or -name '*.pyc' \) -delete
-
+	rm -rf .tox
 
 build:
 	poetry build

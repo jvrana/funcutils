@@ -17,5 +17,8 @@ class Null:
     def all(self, objs: list) -> bool:
         return all([x is self for x in objs])
 
+    def __hash__(self):
+        return hash(self.__class__)
+
 
 null = Null()
