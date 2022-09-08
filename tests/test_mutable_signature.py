@@ -9,15 +9,18 @@ from typing import Tuple
 import pytest
 
 from jdv_funcutils import MutableSignature
+from jdv_funcutils.imports import empty
 from jdv_funcutils.signature.mutable_signature import BoundSignature
+from jdv_funcutils.signature.mutable_signature import MutableParameter
 from jdv_funcutils.signature.mutable_signature import MutableParameterTuple
 from jdv_funcutils.signature.mutable_signature import named_tuple_type_constructor
+from jdv_funcutils.signature.mutable_signature import ParameterValue
 from jdv_funcutils.signature.mutable_signature import SignatureException
 from jdv_funcutils.signature.mutable_signature import SignatureMissingParameterException
 from jdv_funcutils.signature.mutable_signature import tuple_type_constructor
 
 
-class TestSignatureExtended:
+class TestMutableSignature:
     @pytest.fixture()
     def foo(self):
         def foo(a: int, b: int):
@@ -29,6 +32,18 @@ class TestSignatureExtended:
     def s(self, foo):
         s = MutableSignature(foo)
         return s
+
+    def test_is_valid(self, foo):
+        s = MutableSignature(foo)
+        assert s.is_valid()
+        s.param_by_kind[MutableParameter.KEYWORD_ONLY].append(
+            MutableParameter(
+                "d", default=None, annotation=int, kind=MutableSignature.POSITIONAL_ONLY
+            )
+        )
+        assert not s.is_valid()
+        s.clear_and_add_all(s.params)
+        assert s.is_valid()
 
     def test_str(self):
         def bar(a: int, b: str, c: float = 4.0) -> float:
@@ -174,8 +189,8 @@ class TestSignatureExtended:
 
         print(ret.bound)
         assert len(ret.bound) == 2
-        print(ret.unbound_parameters)
-        assert len(ret.unbound_parameters) == 1
+        print(ret.params_missing_values)
+        assert len(ret.params_missing_values) == 1
 
         print(ret.get_args(bound=False))
         print(ret.get_args(bound=True))
@@ -223,6 +238,54 @@ class TestSignatureExtended:
         expected = [params[0], params[2], params[1]]
         assert s.get_signature_parameters() == tuple(expected)
 
+    def test_partition(self):
+        def fn1(a_0: int, a_1: int, b_0: int = 0, b_1: int = 1):
+            ...
+
+        s1 = MutableSignature(fn1)
+        a, b = s1.partition(lambda x: x.name.endswith("_0"))
+        print(a)
+        print(b)
+
+    class TestGetters:
+        def test1(self):
+            def f(a: int, b: str, c: int = 5, d: str = "D"):
+                ...
+
+            s = MutableSignature(f)
+
+            assert [p.name for p in s.get_pos_params()] == ["a", "b", "c", "d"]
+            assert [p.name for p in s.get_pos_only_params()] == []
+            assert [p.name for p in s.get_kw_params()] == ["a", "b", "c", "d"]
+            assert [p.name for p in s.get_kw_only_params()] == []
+
+        def test_kw_only(self):
+            """The '*' indicates those arguments after it are keyword only."""
+
+            def f(a: int, b: str, *, c: int = 5, d: str = "D"):
+                ...
+
+            s = MutableSignature(f)
+
+            assert [p.name for p in s.get_pos_params()] == ["a", "b"]
+            assert [p.name for p in s.get_pos_only_params()] == []
+            assert [p.name for p in s.get_kw_params()] == ["a", "b", "c", "d"]
+            assert [p.name for p in s.get_kw_only_params()] == ["c", "d"]
+
+        def test_pos_only(self):
+            """The '/' indicates those arguments before it are positional
+            only."""
+
+            def f(a: int, b: str, /, c: int = 5, d: str = "D"):
+                ...
+
+            s = MutableSignature(f)
+
+            assert [p.name for p in s.get_pos_params()] == ["a", "b", "c", "d"]
+            assert [p.name for p in s.get_pos_only_params()] == ["a", "b"]
+            assert [p.name for p in s.get_kw_params()] == ["c", "d"]
+            assert [p.name for p in s.get_kw_only_params()] == []
+
 
 class TestBoundSignature:
     def test_new_signature(self):
@@ -269,7 +332,7 @@ class TestBoundSignature:
         b2 = s2.bind(1, 2, 3)
         print()
         for pv in b2.bound:
-            b1.get(pv.parameter.name).value = pv.value
+            b1.get(pv.mutable_parameter.name).value = pv.value
         assert b2.args == (1, 2, 3)
         assert b1.args == (3, 1, 2)
 
@@ -288,14 +351,72 @@ class TestBoundSignature:
         with pytest.raises(SignatureException):
             b2.bind(1, 2, c=3)
 
-    def test_partition(self):
-        def fn1(a_0: int, a_1: int, b_0: int = 0, b_1: int = 1):
+    def test_bind2(self):
+        def fn1(a: int, b: int, c: int, d: int):
             ...
 
         s1 = MutableSignature(fn1)
-        a, b = s1.partition(lambda x: x.name.endswith("_0"))
-        print(a)
-        print(b)
+        bound = s1.bind(1, 2, 3, 4)
+        a, b = bound.partition(lambda x: x.value % 2 == 0)
+        assert a.bound_signature().params[0].name == "b"
+        assert a.bound_signature().params[1].name == "d"
+        assert b.bound_signature().params[0].name == "a"
+        assert b.bound_signature().params[1].name == "c"
+
+    def test_all_bound(self):
+        def fn1(a: int, b: int, c: int, d: int):
+            ...
+
+        s1 = MutableSignature(fn1)
+        bound = s1.bind(1, 2, 3, 4)
+
+        assert bound.args_missing_params == tuple()
+        assert bound.kwargs_missing_params == dict()
+        assert not bound.has_missing_values()
+        assert not bound.has_extra_args()
+        assert bound.is_valid()
+
+    def test_args_missing_params(self):
+        def fn1(a: int, b: int, c: int, d: int):
+            ...
+
+        s1 = MutableSignature(fn1)
+        bound = s1.bind(1, 2, 3, 4, 5, 6)
+
+        assert bound.args_missing_params == (5, 6)
+
+    def test_kwargs_missing_params(self):
+        def fn1(a: int, b: int, c: int, d: int):
+            ...
+
+        s1 = MutableSignature(fn1)
+        bound = s1.bind(1, 2, c=4, extra1=4, extra2=5)
+
+        assert bound.kwargs_missing_params == dict(extra1=4, extra2=5)
+
+    def test_params_missing_values(self):
+        def fn1(a: int, b: int, c: int, d: int):
+            ...
+
+        s1 = MutableSignature(fn1)
+        bound = s1.bind(1, 2, c=4, extra1=4, extra2=5)
+        assert bound.values_missing_params == (
+            ParameterValue(key="extra1", value=4),
+            ParameterValue(key="extra2", value=5),
+        )
+        assert bound.params_missing_values == (
+            ParameterValue(
+                key=3,
+                mutable_parameter=MutableParameter(
+                    name="d",
+                    annotation=int,
+                    default=empty,
+                    kind=MutableParameter.POSITIONAL_OR_KEYWORD,
+                ),
+            ),
+        )
+        assert bound.has_extra_args()
+        assert bound.has_missing_values()
 
 
 class TestTransform:
