@@ -570,7 +570,7 @@ class MutableParameterTuple(MutableParameter):
         if annotation == empty:
             annots = [p.annotation for p in parameters]
             names = [p.name for p in parameters]
-            annotation = named_tuple_type_constructor(annots, names)
+            annotation = tuple_type_constructor(annots, names)
         self.annotation = annotation
         self.kind = kind
         if default is Null:
