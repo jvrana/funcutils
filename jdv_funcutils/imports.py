@@ -13,4 +13,5 @@ import inspect
 
 empty = inspect._empty  # noqa
 
+
 __all__ = ["ParamSpec", "Concatenate", "empty"]
