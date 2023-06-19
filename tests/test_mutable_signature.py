@@ -42,7 +42,7 @@ class TestMutableSignature:
             )
         )
         assert not s.is_valid()
-        s.clear_and_add_all(s.params)
+        s._clear_and_add_all(s.params)
         assert s.is_valid()
 
     def test_str(self):

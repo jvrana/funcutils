@@ -81,10 +81,13 @@ def _to_annotations_tuple(
     return tuple(annot_list)
 
 
-def tuple_type_constructor(annotations_list: List[Any], tuple_cls=None) -> Type:
+def tuple_type_constructor(
+    annotations_list: Tuple[Union[Type[object], Any], ...],
+    tuple_cls: Optional[Type[object]] = None,
+) -> Type[object]:
     annotations_list = _to_annotations_tuple(annotations_list)
-    tuple_cls = Tuple or tuple_cls
-    return tuple_cls[annotations_list]
+    _cls: Any = Tuple or tuple_cls
+    return _cls[annotations_list]
 
 
 def named_tuple_type_constructor(
@@ -99,7 +102,16 @@ def named_tuple_type_constructor(
     return NamedTuple(name, tuple_fields)
 
 
-class ParameterLocation(NamedTuple):
+class ParameterLocation(
+    NamedTuple(
+        "_ParameterLocation",
+        [
+            ("param_index", int),
+            ("relative_index_to_kind", int),
+            ("param", int),
+        ],
+    )
+):
 
     param_index: int
     relative_index_to_kind: int
@@ -123,6 +135,14 @@ class MutableParameter(ParameterLike):
 
     @classmethod
     def from_parameter(cls, param: Parameter) -> MutableParameter:
+        """
+        It takes a `Parameter` object and returns a `MutableParameter` object
+
+        :param cls: The class that the method is bound to
+        :param param: The parameter to convert
+        :type param: Parameter
+        :return: A new instance of the class.
+        """
         return cls(
             name=param.name,
             default=param.default,
@@ -131,6 +151,10 @@ class MutableParameter(ParameterLike):
         )
 
     def to_parameter(self) -> Parameter:
+        """
+        It takes a Python Parameter object and returns a Parameter object
+        :return: A Parameter object.
+        """
         return Parameter(
             name=self.name,
             default=self.default,
@@ -139,15 +163,27 @@ class MutableParameter(ParameterLike):
         )
 
     def is_positional(self):
+        """
+        It returns True if the kind of the parameter is POSITIONAL_OR_KEYWORD or POSITIONAL_ONLY
+        """
         return self.kind in [self.POSITIONAL_OR_KEYWORD, self.POSITIONAL_ONLY]
 
     def is_positional_only(self):
+        """
+        Returns True if the argument is positional-only
+        """
         return self.kind == self.POSITIONAL_ONLY
 
     def is_keyword(self):
+        """
+        It returns True if the kind of the parameter is either POSITIONAL_OR_KEYWORD or KEYWORD_ONLY
+        """
         return self.kind in [self.POSITIONAL_OR_KEYWORD, self.KEYWORD_ONLY]
 
     def is_keyword_only(self):
+        """
+        Returns True if the argument is a keyword-only argument
+        """
         return self.kind == self.KEYWORD_ONLY
 
     def __eq__(self, other: object):
@@ -200,7 +236,7 @@ class MutableSignature(Sequence[MutableParameter]):
         )
         if obj:
             s = get_signature(obj, return_annotation=return_annotation)
-            self.clear_and_add_all(list(s.parameters.values()))
+            self._clear_and_add_all(list(s.parameters.values()))
             return_annotation = s.return_annotation
         self.return_annotation = return_annotation
 
@@ -226,10 +262,19 @@ class MutableSignature(Sequence[MutableParameter]):
 
     @property
     def params(self) -> Tuple[MutableParameter, ...]:
+        """
+        Returns a tuple of :class:`MutableParameter` in this object
+        :return: A tuple of MutableParameters
+        """
         return tuple(functools.reduce(operator.add, self.param_by_kind.values()))
 
-    def fix_signature(self):
-        self.clear_and_add_all(self.params)
+    def fix_signature(self) -> None:
+        """
+        Fixes an invalid MutableSignature. Will clear and re-add all parameters.
+
+        :return: None
+        """
+        self._clear_and_add_all(self.params)
 
     def is_valid(self) -> bool:
         """Returns if parameters for a valid signature.
@@ -243,16 +288,25 @@ class MutableSignature(Sequence[MutableParameter]):
                     return False
         return True
 
-    def clear_and_add_all(self, params: Sequence[_Param]):
+    def _clear_and_add_all(self, params: Sequence[_Param]):
         for v in self.param_by_kind.values():
             v.clear()
         for p in params:
             self.add(p)
 
     def get_signature_parameters(self) -> Tuple[Parameter]:
+        """
+        Return a tuple of standard :class:`Parameter`
+
+        :return: Tuple of Parameters
+        """
         return tuple([p.to_parameter() for p in self.params])
 
-    def to_signature(self):
+    def to_signature(self) -> Signature:
+        """Convert to a standard :class:`Signature`
+
+        :return: Standard Siganture
+        """
         kwargs = {}
         if self.return_annotation is not Null:
             kwargs["return_annotation"] = self.return_annotation
@@ -269,6 +323,16 @@ class MutableSignature(Sequence[MutableParameter]):
     def get_pos_and_param(
         self, key: Union[int, str, _Param], strict: bool = True
     ) -> ParameterLocation:
+        """
+        Return the ParameterLocation for a given parameter. Parameters can
+        be found using is position (int), name (str), a Parameter, or MutableParameter.
+
+        :param key: Key to find the parameter. Can use the param's position (int), name (str), a Parameter, or MutableParameter.
+        :param strict: If True (default), treat int keys cannot be used to access kwonly params and str keys cannot be used
+            to access positional only params.
+        :return: A :class:`ParameterLocation` designating it positional index, it relative positional index in relation
+            to other parameters of the same kind (POSITIONAL_ONLY, etc.), and the MutableParameter.
+        """
         for x in self._enum_param_lists():
             if isinstance(key, int):
                 if x.param_index == key:
@@ -301,17 +365,36 @@ class MutableSignature(Sequence[MutableParameter]):
     def get_param(
         self, key: Union[int, str, _Param], strict: bool = True
     ) -> MutableParameter:
+        """
+        Returns a parameter based on key.
+
+        :param key: Key to find the parameter. Can use the param's position (int), name (str), a Parameter, or MutableParameter.
+        :param strict: If True (default), treat int keys cannot be used to access kwonly params and str keys cannot be used
+            to access positional only params.
+        :return: The MutableParameter
+        """
         return self.get_pos_and_param(key, strict=strict)[-1]
 
     def get_params(
-        self, fn: Optional[Callable[[_Param], bool]] = None
+        self, filter_fn: Optional[Callable[[MutableParameter], bool]] = None
     ) -> Tuple[MutableParameter, ...]:
-        if fn:
-            return tuple([p for p in self.params if fn(p)])
+        """
+        Get a tuple of MutableParameters. Optionally provide a filter_fn to accept only those
+        parameters that pass the function
+
+        :param filter_fn: The filter fn
+        :return: Tuple of MutableParameters.
+        """
+        if filter_fn:
+            return tuple([p for p in self.params if filter_fn(p)])
         else:
             return tuple(self.params)
 
     def get_pos_params(self) -> Tuple[MutableParameter, ...]:
+        """
+        Returns a tuple of all the positional parameters of a function
+        :return: A tuple of MutableParameter objects.
+        """
         fn = typing.cast(
             Callable[[_Param], bool],
             MutableParameter.is_positional,
@@ -319,6 +402,10 @@ class MutableSignature(Sequence[MutableParameter]):
         return self.get_params(fn)
 
     def get_pos_only_params(self) -> Tuple[MutableParameter, ...]:
+        """
+        Returns a tuple of all the positional only parameters of a function
+        :return: A tuple of MutableParameter objects.
+        """
         fn = typing.cast(
             Callable[[_Param], bool],
             MutableParameter.is_positional_only,
@@ -326,6 +413,9 @@ class MutableSignature(Sequence[MutableParameter]):
         return self.get_params(fn)
 
     def get_kw_params(self) -> Tuple[MutableParameter, ...]:
+        """
+        It returns a tuple of all the keyword parameters of a function
+        """
         fn = typing.cast(
             Callable[[_Param], bool],
             MutableParameter.is_keyword,
@@ -333,6 +423,11 @@ class MutableSignature(Sequence[MutableParameter]):
         return self.get_params(fn)
 
     def get_kw_only_params(self) -> Tuple[MutableParameter, ...]:
+        """
+        "Return a tuple of all the keyword-only parameters of the function."
+
+        :return: A tuple of MutableParameter objects.
+        """
         fn = typing.cast(Callable[[_Param], bool], MutableParameter.is_keyword_only)
         return self.get_params(fn)
 
@@ -368,7 +463,7 @@ class MutableSignature(Sequence[MutableParameter]):
     ):
         kwargs = dict(annotation=annotation, default=default, kind=kind)
         kwargs = dict_remove_null(kwargs)
-        if kwargs.get("kind", null) is Null:
+        if kwargs.get("kind", Null) is Null:
             kwargs["kind"] = ParameterKind.POSITIONAL_OR_KEYWORD
         self._add(index, MutableParameter.from_parameter(Parameter(param, **kwargs)))
 
@@ -386,6 +481,22 @@ class MutableSignature(Sequence[MutableParameter]):
         kind: Union[Null, ParameterKind] = null,
         index: int = -1,
     ):
+        """
+        Add a parameter to the signature
+
+        :param param: Parameter to add.
+        :type param: Union[str, MutableParameter, Parameter]
+        :param annotation: The type of the parameter
+        :type annotation: Any
+        # Printing the word "the"
+        :param default: The default value for the parameter
+        :type default: Any
+        :param kind: A value from _ParameterKind
+        :type kind: Union[Null, ParameterKind]
+        :param index: The position in the list of parameters to insert the new parameter
+        :type index: int
+        :return: A MutableParameter
+        """
         kwargs = dict(annotation=annotation, default=default, kind=kind)
         kwargs = dict_remove_null(kwargs)
         if isinstance(param, str):
@@ -409,15 +520,41 @@ class MutableSignature(Sequence[MutableParameter]):
         default: Any = null,
         kind: Union[Null, ParameterKind] = null,
     ):
+        """
+        Inserts a parameter into the signature at the given index
+
+        :param index: The index where the parameter will be inserted
+        :type index: int
+        :param param: The name of the parameter
+        :type param: Union[str, MutableParameter, Parameter]
+        :param annotation: The type of the parameter
+        :type annotation: Any
+        :param default: The default value for the parameter
+        :type default: Any
+        :param kind: The kind of parameter
+        :type kind: Union[Null, ParameterKind]
+        :return: The return value is the Parameter object that was added.
+        """
         return self.add(param, annotation, default=default, kind=kind, index=index)
 
-    def remove(self, param: Union[str, int, MutableParameter, Parameter]):
+    def remove(
+        self, param: Union[str, int, MutableParameter, Parameter]
+    ) -> MutableParameter:
+        """
+        Remove a parameter from the parameter list
+
+        :param param: Parameter to remove
+        :type param: Union[str, int, MutableParameter, Parameter]
+        :return: The parameter that was removed.
+        """
         param_to_delete = self.get_param(param)
-        for _i, _j, p in self._enum_param_lists():
-            plist = self.param_by_kind[p.kind]
-            if p is param_to_delete:
-                plist.remove(p)
-                return
+        if param_to_delete is not None:
+            for _i, _j, p in self._enum_param_lists():
+                plist = self.param_by_kind[p.kind]
+                if p is param_to_delete:
+                    p = typing.cast(MutableParameter, p)
+                    plist.remove(p)
+                    return p
         raise IndexError(f"Could not remove '{param}'")
 
     def __str__(self):
@@ -434,6 +571,36 @@ class MutableSignature(Sequence[MutableParameter]):
     def __iter__(self):
         yield from self.params
 
+    # """Pack a set of parameters into a single parameter.
+    #
+    # Examples:
+    #
+    # .. testsetup:: *
+    #
+    #    import funcutils
+    #
+    # .. testcode::
+    #     def fn1(a: int, b: float, c: str, d: list):
+    #         return a, b, c, d
+    #
+    #     s = MutableSignature(fn1)
+    #     s.pack(('a', 'c', 'd'), position=1)
+    #     str(s.to_signature())
+    #
+    # .. testoutput::
+    #
+    #     (b: float, a__c__d: Tuple[int, str, list])
+    #
+    # :param from_params: Parameters to pack
+    # :param name: Optional name to give the new packed parameter.
+    #     If not provided, parameter names will be joined with '__' (e.g. a, b, c => 'a__b__c')
+    # :param position: Position to insert the new packed parameter. Note that the position is
+    #     relative to the parameter kind. PositionalOnly, PositionalOrKeyword, PositionalVar,
+    #     KeywordOnly, KeywordVar
+    # :param kind: Parameter kind to give the new packed parameter.
+    # :return:
+    # """
+
     def pack(
         self,
         from_params: Sequence[Union[int, str]],
@@ -441,34 +608,18 @@ class MutableSignature(Sequence[MutableParameter]):
         position: int = 0,
         kind: _ParameterKind = ParameterKind.POSITIONAL_OR_KEYWORD,
     ):
-        """Pack a set of parameters into a single parameter.
+        """It takes a list of parameters, removes them from the signature, and inserts a new parameter that is a
+        tuple of the removed parameters
 
-        Examples:
-
-        .. testsetup:: *
-
-           import funcutils
-
-        .. testcode::
-            def fn1(a: int, b: float, c: str, d: list):
-                return a, b, c, d
-
-            s = MutableSignature(fn1)
-            s.pack(('a', 'c', 'd'), position=1)
-            str(s.to_signature())
-
-        .. testoutput::
-
-            (b: float, a__c__d: Tuple[int, str, list])
-
-        :param from_params: Parameters to pack
-        :param name: Optional name to give the new packed parameter.
-            If not provided, parameter names will be joined with '__' (e.g. a, b, c => 'a__b__c')
-        :param position: Position to insert the new packed parameter. Note that the position is
-            relative to the parameter kind. PositionalOnly, PositionalOrKeyword, PositionalVar,
-            KeywordOnly, KeywordVar
-        :param kind: Parameter kind to give the new packed parameter.
-        :return:
+        :param from_params: A list of parameters to pack into a single parameter
+        :type from_params: Sequence[Union[int, str]]
+        :param name: The name of the packed parameter
+        :type name: Optional[str]
+        :param position: The position in the list of parameters to insert the packed parameter, defaults to 0
+        :type position: int (optional)
+        :param kind: _ParameterKind = ParameterKind.POSITIONAL_OR_KEYWORD,
+        :type kind: _ParameterKind
+        :return: self
         """
         params = [self[k] for k in from_params]
         packed = MutableParameterTuple(params, name=name, kind=kind)
@@ -477,6 +628,7 @@ class MutableSignature(Sequence[MutableParameter]):
         for p in to_remove:
             self.remove(p)
         self.insert(position, packed)
+        return self
 
     def bind(self, *args: Any, **kwargs: Any) -> BoundSignature:  # noqa
         return BoundSignature(self, *args, **kwargs)
@@ -500,7 +652,40 @@ class MutableSignature(Sequence[MutableParameter]):
         for p in new_params:
             self.add(p)
 
-    def transform(self, f: Callable[..., _T], name: Optional[str] = None):
+    def transform(
+        self, f: Callable[..., Any], name: Optional[str] = None
+    ) -> Callable[..., Any]:
+        """
+        Transform or mutate a function to match the signature of this MutableSignature object.
+
+        Examples:
+
+        .. code-block:: python
+
+            def fn1(a: int, b, c: int):
+                return a, b, c
+
+            s = MutableSignature(fn1)
+            s.pack((0, 1))
+            fn2 = s.transform(fn1)
+
+            assert fn2((1, 2), 3) == (1, 2, 3)
+
+        .. code-block:: python
+
+            def test_pack_and_bind_pos_1(self):
+            def fn1(a: int, b, c: int):
+                return a, b, c
+
+            s = MutableSignature(fn1)
+            s.pack((0, 1), position=1)
+            fn2 = s.transform(fn1)
+            assert fn2(3, (1, 2)) == (1, 2, 3)
+
+        :param f: The function to transform.
+        :param name: Optional name of the newly created function.
+        :return: Transformed function.
+        """
         s1 = self.__class__(f)
         b1 = s1.bind()
 
@@ -599,25 +784,18 @@ class ParameterValue(ReprMixin):
             return self.mutable_parameter.name  # noqa
 
     def is_bound(self) -> bool:
-        """Returns true if Parameter has value and parameter defined.
-
-        :return:
-        """
+        """Returns true if Parameter has value and parameter defined."""
         return self.value is not Null and self.mutable_parameter is not Null
 
     def is_missing_parameter(self) -> bool:
         """Returns True if ParameterValue has a value defined but no parameter
         associated.
-
-        :return:
         """
         return self.value is not Null and self.mutable_parameter is Null
 
     def is_missing_value(self) -> bool:
         """Returns True if ParameterValue has a parameter associated but no
-        value.
-
-        :return:
+        value
         """
         return self.value is Null and self.mutable_parameter is not Null
 
@@ -713,6 +891,10 @@ class BoundSignature(Collection[ParameterValue]):
         return bound_sign
 
     def bind(self, *args: Any, **kwargs: Any) -> BoundSignature:
+        """
+        The function takes in a list of positional arguments and a dictionary of keyword arguments, and then it binds the
+        arguments to the parameters of the signature
+        """
         data_dict: Dict[typing.Hashable, ParameterValue] = {}
         self.data.clear()
         for i, p in enumerate(self.signature.get_params()):
